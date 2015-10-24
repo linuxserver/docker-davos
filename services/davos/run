@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /sbin/setuser abc java -jar /app/davos.jar 
