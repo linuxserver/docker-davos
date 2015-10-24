@@ -1,9 +1,10 @@
 FROM linuxserver/baseimage
 MAINTAINER Josh Stark <jagfin1@gmail.com>
 
-ENV APTLIST="openjdk-8-jre"
+ENV APTLIST="oracle-java8-installer"
 
-RUN apt-get update -q && \
+RUN add-apt-repository ppa:webupd8team/java && \
+apt-get update -q && \
 apt-get install $APTLIST -qy && \
 apt-get clean && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/*
 
