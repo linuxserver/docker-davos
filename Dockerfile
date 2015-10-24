@@ -6,10 +6,9 @@ ENV APTLIST="oracle-java8-set-default oracle-java8-installer"
 
 RUN add-apt-repository ppa:webupd8team/java && \
 apt-get update -q && \
-echo oracle-java7-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections && \
+echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections && \
 apt-get install $APTLIST -qy && \
-apt-get clean && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/* && \
-mkdir /app/davos
+apt-get clean && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/*
 
 #Adding Custom files
 ADD init/ /etc/my_init.d/
