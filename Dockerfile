@@ -1,21 +1,26 @@
-FROM linuxserver/baseimage
+FROM lsiobase/alpine
 MAINTAINER Josh Stark <jagfin1@gmail.com>
 
-ENV APTLIST="oracle-java8-set-default oracle-java8-installer"
+# package version
+ARG DAVOS_VER="latest"
 
+# install packages
+RUN \
+ apk add --no-cache \
+	curl \
+	openjdk8-jre
 
-RUN add-apt-repository ppa:webupd8team/java && \
-apt-get update -q && \
-echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections && \
-apt-get install $APTLIST -qy && \
-apt-get clean && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/* && \
-mkdir /download
+# install davos
+RUN \
+ mkdir -p \
+	/app/davos && \
+ curl -o \
+ /app/davos/davos.jar -L \
+	http://files.linuxserver.io/davos/davos-${DAVOS_VER}.jar
 
-#Adding Custom files
-ADD init/ /etc/my_init.d/
-ADD services/ /etc/service/
-RUN chmod -v +x /etc/service/*/run /etc/my_init.d/*.sh
+# add local files
+COPY root/ /
 
-# Volumes and Ports
-VOLUME /config /download
+# ports and volumes
 EXPOSE 8080
+VOLUME /config /download
