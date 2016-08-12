@@ -8,7 +8,7 @@ ARG DAVOS_VER="latest"
 RUN \
  apk add --no-cache \
 	curl \
-	openjdk8-jre && \
+	openjdk8-jre
 
 # install davos
 RUN \
