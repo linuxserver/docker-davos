@@ -12,8 +12,10 @@ RUN \
 
 # install davos
 RUN \
+ mkdir -p \
+	/app/davos && \
  curl -o \
- /app/davos.jar -L \
+ /app/davos/davos.jar -L \
 	http://files.linuxserver.io/davos/davos-${DAVOS_VER}.jar
 
 # add local files
