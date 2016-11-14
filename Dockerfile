@@ -19,4 +19,5 @@ COPY root/ /
 
 # ports and volumes
 EXPOSE 8080
+WORKDIR /app/davos
 VOLUME /config /download
