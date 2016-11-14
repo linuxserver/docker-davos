@@ -2,7 +2,7 @@ FROM lsiobase/alpine
 MAINTAINER Josh Stark <jagfin1@gmail.com>
 
 # add davos app
-COPY davos-2.0.0.jar /app/davos/davos.jar
+COPY build/libs/davos-2.0.0.jar /app/davos/davos.jar
 
 # install packages
 RUN \
