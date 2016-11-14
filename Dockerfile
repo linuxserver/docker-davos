@@ -2,7 +2,7 @@ FROM lsiobase/alpine
 MAINTAINER Josh Stark <jagfin1@gmail.com>
 
 # add davos app
-COPY build/libs/davos-2.0.0.jar /app/davos/davos.jar
+COPY build/libs/ /app/davos/
 
 # set version label
 ARG BUILD_DATE
@@ -12,7 +12,12 @@ LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DA
 # install packages
 RUN \
  apk add --no-cache \
-	openjdk8-jre
+	curl \
+	openjdk8-jre && \
+
+# rename and chmod davos app
+ mv /app/davos/*.jar /app/davos/davos.jar && \
+ chmod 755 /app/davos/davos.jar
 
 # add local files
 COPY root/ /
