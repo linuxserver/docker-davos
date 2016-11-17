@@ -16,8 +16,7 @@ The [LinuxServer.io][linuxserverurl] team brings you another container release f
 
 _davos_ is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.
 
-
-[![davos]https://raw.githubusercontent.com/linuxserver/davos/master/docs/list.PNG][davosurl]
+[![davos](https://raw.githubusercontent.com/linuxserver/davos/master/docs/list.PNG)][davosurl]
 [davosurl]: https://github.com/linuxserver/davos
 
 ## Usage
