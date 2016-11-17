@@ -11,8 +11,14 @@ The [LinuxServer.io][linuxserverurl] team brings you another container release f
 * [Podcast][podcasturl] covers everything to do with getting the most from your Linux Server plus a focus on all things Docker and containerisation!
 
 # linuxserver/davos
+[![(https://images.microbadger.com/badges/version/linuxserver/davos.svg)](https://microbadger.com/images/linuxserver/davos "Get your own version badge on microbadger.com")[![](https://images.microbadger.com/badges/image/linuxserver/davos.svg)](http://microbadger.com/images/linuxserver/davos "Get your own image badge on microbadger.com")[![Docker Pulls](https://img.shields.io/docker/pulls/linuxserver/davos.svg)][hub][![Docker Stars](https://img.shields.io/docker/stars/linuxserver/davos.svg)][hub][![Build Status](http://jenkins.linuxserver.io:8080/job/Software/job/Davos/job/davos_40_Docker/badge/icon)](http://jenkins.linuxserver.io:8080/job/Software/job/Davos/job/davos_40_Docker/)
+[hub]: https://hub.docker.com/r/linuxserver/davos/
 
 _davos_ is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.
+
+
+[![davos]https://raw.githubusercontent.com/linuxserver/davos/master/docs/list.PNG][davosurl]
+[davosurl]: https://github.com/linuxserver/davos
 
 ## Usage
 
@@ -54,7 +60,7 @@ In this instance `PUID=1001` and `PGID=1001`. To find yours use `id user` as bel
 
 ## Setting up the application
 
-The application does not require any set up other than starting the docker container. Further documentation can be found on the [davos GitHub repository page](https://github.com/linuxserver/davos).
+The application does not require any set up other than starting the docker container. Further documentation can be found on the [davos GitHub repository page][davosurl].
 
 ## Info
 
