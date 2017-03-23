@@ -26,7 +26,7 @@ docker create \
   --name=davos \
   -v <path to data>:/config \
   -v <path to downloads folder>:/download
-  -e PGID=<gid> -e PUID=<uid>  \
+  -e PGID=<gid> -e PUID=<uid> \
   -p 8080:8080 \
   linuxserver/davos
 ```
@@ -76,4 +76,5 @@ The application does not require any set up other than starting the docker conta
 
 ## Versions
 
++ **22.03.17:** Updated to application version 2.1.1
 + **14.11.16:** Initial creation of documentation
