@@ -76,5 +76,6 @@ The application does not require any set up other than starting the docker conta
 
 ## Versions
 
++ **04.04.17:** Updated to application version 2.1.2
 + **22.03.17:** Updated to application version 2.1.1
 + **14.11.16:** Initial creation of documentation
