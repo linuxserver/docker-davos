@@ -14,7 +14,7 @@ pipeline {
     DEV_DOCKERHUB_IMAGE = 'lsiodev/davos'
     PR_DOCKERHUB_IMAGE = 'lspipepr/davos'
     BUILDS_DISCORD = credentials('build_webhook_url')
-    GITHUB_TOKEN = credentials('github_token')
+    GITHUB_TOKEN = credentials('498b4638-2d02-4ce5-832d-8a57d01d97ab')
     DIST_IMAGE = 'alpine'
     DIST_TAG = '3.8'
     DIST_PACKAGES = 'curl \
