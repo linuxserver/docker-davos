@@ -7,8 +7,8 @@ RUN \
  apt-get update && apt-get install -y jq && \
  echo "**** Download Davos ****" && \
  if [ -z ${DAVOS_RELEASE+x} ]; then \
-	DAVOS_RELEASE=$(curl -sX GET https://api.github.com/repos/linuxserver/davos/tags \
-        | jq -r '.[0] | .name'); \
+	DAVOS_RELEASE=$(curl -sX GET https://api.github.com/repos/linuxserver/davos/releases/latest \
+	| jq -r '. | .tag_name'); \
  fi && \
  curl -o \
 	/tmp/davos.tar.gz -L \
