@@ -1,6 +1,8 @@
-FROM gradle:latest as buildstage
+FROM gradle@sha256:8ffbf62453a62bc15a9a483c5d3cc89523a511753d191907363341473087b8d5 as buildstage
 ARG DAVOS_RELEASE
 USER root
+# Add qemu to build on x86_64 systems
+COPY qemu-aarch64-static /usr/bin
 
 RUN \
  echo "**** Install build requirements ****" && \
@@ -8,7 +10,7 @@ RUN \
  echo "**** Download Davos ****" && \
  if [ -z ${DAVOS_RELEASE+x} ]; then \
 	DAVOS_RELEASE=$(curl -sX GET https://api.github.com/repos/linuxserver/davos/tags \
-        | jq -r '.[0] | .name'); \
+	| jq -r '.[0] | .name'); \
  fi && \
  curl -o \
 	/tmp/davos.tar.gz -L \
@@ -17,8 +19,8 @@ RUN \
  mkdir -p \
 	/app/davos-test/ && \
  tar xf \
- /tmp/davos.tar.gz -C \
- /app/davos-test/ --strip-components=1 && \
+	/tmp/davos.tar.gz -C \
+	/app/davos-test/ --strip-components=1 && \
  cd /app/davos-test/ && \
  gradle build cucumber && \
  echo "**** Build Davos For Release ****" && \
@@ -34,7 +36,7 @@ RUN \
  chmod 755 /davos.jar
 
 
-FROM lsiobase/alpine:3.8
+FROM lsiobase/alpine.arm64:3.8
 
 # set version label
 ARG BUILD_DATE
@@ -42,10 +44,15 @@ ARG VERSION
 LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
 LABEL maintainer="JAGFin1,Thelamer"
 
+# Add qemu to build on x86_64 systems
+COPY qemu-aarch64-static /usr/bin
+
 # install packages
 RUN \
  apk add --no-cache \
-	curl \
+	curl && \
+ apk add --no-cache \
+	--repository http://nl.alpinelinux.org/alpine/edge/community \
 	openjdk8-jre
 
 # copy files from build stage and local files
