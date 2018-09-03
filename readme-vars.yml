@@ -1,0 +1,35 @@
+---
+
+# project information
+project_name: davos
+project_url: "https://github.com/linuxserver/davos"
+project_logo: "https://raw.githubusercontent.com/linuxserver/davos/master/docs/list.PNG"
+project_blurb: |
+  [{{ project_name|capitalize }}]({{ project_url }}) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.
+project_lsio_github_repo_url: "https://github.com/linuxserver/docker-{{ project_name }}"
+
+# supported architectures
+available_architectures:
+  - { arch: "{{ arch_x86_64 }}", tag: "amd64-latest"}
+  - { arch: "{{ arch_arm64 }}", tag: "arm64v8-latest"}
+  - { arch: "{{ arch_armhf }}", tag: "arm32v6-latest"}
+
+# container parameters
+param_container_name: "{{ project_name }}"
+param_usage_include_vols: true
+param_volumes:
+  - { vol_path: "/config", vol_host_path: "<path to data>", desc: "davos's config location. This is where it stores its database file and logs." }
+  - { vol_path: "/download", vol_host_path: "<path to downloads folder>", desc: "davos's file download location" }
+
+param_usage_include_ports: true
+param_ports:
+  - { external_port: "8080", internal_port: "8080", port_desc: "This is the default port that davos runs under" }
+
+# application setup block
+app_setup_block_enabled: true
+app_setup_block: |
+  The application does not require any set up other than starting the docker container. Further documentation can be found on the [davos GitHub repository page](https://github.com/linuxserver/davos).
+
+# changelog
+changelogs:
+  - { date: "18.11.16:", desc: "Initial Release." }

@@ -10,6 +10,7 @@ pipeline {
     BUILD_VERSION_ARG = 'DAVOS_RELEASE'
     LS_USER = 'linuxserver'
     LS_REPO = 'docker-davos'
+    CONTAINER_NAME = 'davos'
     DOCKERHUB_IMAGE = 'linuxserver/davos'
     DEV_DOCKERHUB_IMAGE = 'lsiodev/davos'
     PR_DOCKERHUB_IMAGE = 'lspipepr/davos'
