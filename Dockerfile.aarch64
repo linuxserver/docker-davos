@@ -1,4 +1,4 @@
-FROM gradle@sha256:8ffbf62453a62bc15a9a483c5d3cc89523a511753d191907363341473087b8d5 as buildstage
+FROM gradle:latest as buildstage
 ARG DAVOS_RELEASE
 USER root
 # Add qemu to build on x86_64 systems
