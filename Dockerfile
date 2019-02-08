@@ -1,4 +1,4 @@
-FROM gradle:latest as buildstage
+FROM gradle:4.10 as buildstage
 ARG DAVOS_RELEASE
 USER root
 
