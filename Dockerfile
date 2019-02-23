@@ -34,7 +34,7 @@ RUN \
  chmod 755 /davos.jar
 
 
-FROM lsiobase/alpine:3.8
+FROM lsiobase/alpine:3.9
 
 # set version label
 ARG BUILD_DATE
