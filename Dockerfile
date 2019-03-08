@@ -1,10 +1,12 @@
-FROM gradle:4.10 as buildstage
+FROM openjdk:8-alpine as buildstage
 ARG DAVOS_RELEASE
-USER root
 
 RUN \
  echo "**** Install build requirements ****" && \
- apt-get update && apt-get install -y jq && \
+ apk add \
+	bash \
+	curl \
+	jq && \
  echo "**** Download Davos ****" && \
  if [ -z ${DAVOS_RELEASE+x} ]; then \
 	DAVOS_RELEASE=$(curl -sX GET https://api.github.com/repos/linuxserver/davos/releases/latest \
@@ -20,7 +22,7 @@ RUN \
  /tmp/davos.tar.gz -C \
  /app/davos-test/ --strip-components=1 && \
  cd /app/davos-test/ && \
- gradle build cucumber && \
+ ./gradlew build cucumber && \
  echo "**** Build Davos For Release ****" && \
  mkdir -p \
 	/app/davos/ && \
@@ -28,7 +30,7 @@ RUN \
 	/tmp/davos.tar.gz -C \
 	/app/davos/ --strip-components=1 && \
  cd /app/davos/ && \
- gradle clean build && \
+ ./gradlew -Penv=release clean build && \
  echo "**** Copy Finished Jar ****" && \
  cp build/libs/*.jar /davos.jar && \
  chmod 755 /davos.jar
