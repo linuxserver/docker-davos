@@ -158,6 +158,5 @@ Below are the instructions for updating containers:
 
 ## Versions
 
-* **08.03.19:** - Updating build environment to pass proper build flags and use gradle wrapper.
 * **22.02.19:** - Rebasing to alpine 3.9.
 * **18.11.16:** - Initial Release.
