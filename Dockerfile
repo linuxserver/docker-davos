@@ -15,14 +15,6 @@ RUN \
  curl -o \
 	/tmp/davos.tar.gz -L \
 	"https://github.com/linuxserver/davos/archive/${DAVOS_RELEASE}.tar.gz" && \
- echo "**** Acceptence Tests ****" && \
- mkdir -p \
-	/app/davos-test/ && \
- tar xf \
- /tmp/davos.tar.gz -C \
- /app/davos-test/ --strip-components=1 && \
- cd /app/davos-test/ && \
- ./gradlew build cucumber && \
  echo "**** Build Davos For Release ****" && \
  mkdir -p \
 	/app/davos/ && \
