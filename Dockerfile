@@ -40,7 +40,9 @@ LABEL maintainer="JAGFin1,Thelamer"
 RUN \
  apk add --no-cache \
 	curl \
-	openjdk8-jre
+	nss \
+	openjdk8-jre \
+	sqlite-libs
 
 # copy files from build stage and local files
 COPY --from=buildstage /davos.jar /app/davos/davos.jar
