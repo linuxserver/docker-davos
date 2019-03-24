@@ -27,7 +27,6 @@ RUN \
  cp build/libs/*.jar /davos.jar && \
  chmod 755 /davos.jar
 
-
 FROM lsiobase/alpine:3.9
 
 # set version label
