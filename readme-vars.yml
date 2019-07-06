@@ -32,6 +32,7 @@ app_setup_block: |
 
 # changelog
 changelogs:
+  - { date: "28.06.19:", desc: "Rebasing to alpine 3.10." }
   - { date: "23.03.19:", desc: "Switching to new Base images, shift to arm32v7 tag." }
   - { date: "22.03.19:", desc: "Updating runtime deps due to change in OpenJRE." }
   - { date: "08.03.19:", desc: "Updating build environment to pass proper build flags and use gradle wrapper." }
