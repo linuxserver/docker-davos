@@ -27,7 +27,7 @@ RUN \
  cp build/libs/*.jar /davos.jar && \
  chmod 755 /davos.jar
 
-FROM lsiobase/alpine:3.10
+FROM lsiobase/alpine:3.11
 
 # set version label
 ARG BUILD_DATE
