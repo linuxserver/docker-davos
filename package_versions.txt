@@ -4,8 +4,8 @@ alsa-lib-1.2.1.2-r0
 apk-tools-2.10.5-r0
 bash-5.0.11-r1
 busybox-1.31.1-r9
-ca-certificates-20191127-r1
-ca-certificates-cacert-20191127-r1
+ca-certificates-20191127-r2
+ca-certificates-cacert-20191127-r2
 coreutils-8.31-r0
 curl-7.67.0-r0
 freetype-2.10.1-r0
@@ -50,7 +50,7 @@ musl-1.1.24-r2
 musl-utils-1.1.24-r2
 ncurses-libs-6.1_p20200118-r4
 ncurses-terminfo-base-6.1_p20200118-r4
-nghttp2-libs-1.40.0-r0
+nghttp2-libs-1.40.0-r1
 nspr-4.24-r0
 nss-3.48-r0
 openjdk8-jre-8.242.08-r0
