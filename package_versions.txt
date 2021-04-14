@@ -1,14 +1,14 @@
 alpine-baselayout-3.2.0-r7
 alpine-keys-2.2-r0
 alsa-lib-1.2.2-r0
-apk-tools-2.10.5-r3
+apk-tools-2.10.6-r0
 bash-5.0.17-r0
 brotli-libs-1.0.9-r1
 busybox-1.31.1-r20
 ca-certificates-20191127-r4
 ca-certificates-bundle-20191127-r4
 coreutils-8.32-r0
-curl-7.69.1-r3
+curl-7.76.1-r0
 encodings-1.0.5-r0
 expat-2.2.9-r1
 fontconfig-2.13.1-r2
@@ -27,7 +27,7 @@ libbz2-1.0.8-r1
 libc-utils-0.7.2-r3
 libcom_err-1.45.6-r0
 libcrypto1.1-1.1.1k-r0
-libcurl-7.69.1-r3
+libcurl-7.76.1-r0
 libffi-3.3-r2
 libfontenc-1.1.4-r0
 libgcc-9.3.0-r2
@@ -59,7 +59,7 @@ ncurses-libs-6.2_p20200523-r0
 ncurses-terminfo-base-6.2_p20200523-r0
 nghttp2-libs-1.41.0-r0
 nspr-4.27-r0
-nss-3.60-r0
+nss-3.60-r1
 openjdk8-jre-8.275.01-r0
 openjdk8-jre-base-8.275.01-r0
 openjdk8-jre-lib-8.275.01-r0
