@@ -61,9 +61,9 @@ ncurses-terminfo-base-6.3_p20211120-r0
 nghttp2-libs-1.46.0-r0
 nspr-4.32-r0
 nss-3.76.1-r0
-openjdk8-jre-8.302.08-r2
-openjdk8-jre-base-8.302.08-r2
-openjdk8-jre-lib-8.302.08-r2
+openjdk8-jre-8.322.06-r0
+openjdk8-jre-base-8.322.06-r0
+openjdk8-jre-lib-8.322.06-r0
 p11-kit-0.24.0-r1
 p11-kit-trust-0.24.0-r1
 pcsc-lite-libs-1.9.4-r0
