@@ -40,7 +40,7 @@ libproc-3.3.17-r0
 libretls-3.3.4-r3
 libssl1.1-1.1.1s-r1
 libstdc++-10.3.1_git20211027-r0
-libtasn1-4.18.0-r0
+libtasn1-4.18.0-r1
 libuuid-2.37.4-r0
 libverto-0.3.2-r0
 libx11-1.7.3.1-r0
