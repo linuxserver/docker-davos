@@ -27,7 +27,7 @@ commons-lang3                  3.4                    java-archive
 commons-logging                1.2                    java-archive  
 commons-net                    3.3                    java-archive  
 coreutils                      9.1-r0                 apk           
-curl                           8.0.1-r0               apk           
+curl                           8.1.0-r1               apk           
 davos                                                 java-archive  
 dnsns                                                 java-archive  
 dom4j                          1.6.1                  java-archive  
@@ -77,7 +77,7 @@ libbz2                         1.0.8-r4               apk
 libc-utils                     0.7.2-r3               apk           
 libcom_err                     1.46.6-r0              apk           
 libcrypto3                     3.0.8-r4               apk           
-libcurl                        8.0.1-r0               apk           
+libcurl                        8.1.0-r1               apk           
 libexpat                       2.5.0-r0               apk           
 libffi                         3.4.4-r0               apk           
 libfontenc                     1.1.6-r0               apk           
@@ -109,8 +109,8 @@ log4j-core                     2.16.0                 java-archive
 log4j-slf4j-impl               2.16.0                 java-archive  
 management-agent                                      java-archive  
 mkfontscale                    1.2.2-r1               apk           
-musl                           1.2.3-r4               apk           
-musl-utils                     1.2.3-r4               apk           
+musl                           1.2.3-r5               apk           
+musl-utils                     1.2.3-r5               apk           
 nashorn                        1.8.0_372-b07          java-archive  
 ncurses-libs                   6.3_p20221119-r0       apk           
 ncurses-terminfo-base          6.3_p20221119-r0       apk           
