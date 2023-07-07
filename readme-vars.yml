@@ -7,38 +7,33 @@ project_logo: "https://raw.githubusercontent.com/linuxserver/davos/master/docs/l
 project_blurb: |
   [{{ project_name|capitalize }}]({{ project_url }}) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.
 project_lsio_github_repo_url: "https://github.com/linuxserver/docker-{{ project_name }}"
-
 # supported architectures
 available_architectures:
-  - { arch: "{{ arch_x86_64 }}", tag: "amd64-latest"}
-  - { arch: "{{ arch_arm64 }}", tag: "arm64v8-latest"}
-  - { arch: "{{ arch_armhf }}", tag: "arm32v7-latest"}
-
+  - {arch: "{{ arch_x86_64 }}", tag: "amd64-latest"}
+  - {arch: "{{ arch_arm64 }}", tag: "arm64v8-latest"}
 # container parameters
 param_container_name: "{{ project_name }}"
 param_usage_include_vols: true
 param_volumes:
-  - { vol_path: "/config", vol_host_path: "/path/to/data>", desc: "davos's config location. This is where it stores its database file and logs." }
-  - { vol_path: "/download", vol_host_path: "/path/to/downloads/folder", desc: "davos's file download location" }
-
+  - {vol_path: "/config", vol_host_path: "/path/to/data>", desc: "davos's config location. This is where it stores its database file and logs."}
+  - {vol_path: "/download", vol_host_path: "/path/to/downloads/folder", desc: "davos's file download location"}
 param_usage_include_ports: true
 param_ports:
-  - { external_port: "8080", internal_port: "8080", port_desc: "This is the default port that davos runs under" }
-
+  - {external_port: "8080", internal_port: "8080", port_desc: "This is the default port that davos runs under"}
 # application setup block
 app_setup_block_enabled: true
 app_setup_block: |
   The application does not require any set up other than starting the docker container. Further documentation can be found on the [davos GitHub repository page](https://github.com/linuxserver/davos).
-
 # changelog
 changelogs:
-  - { date: "13.02.23:", desc: "Rebase to Alpine 3.17, migrate to s6v3." }
-  - { date: "15.01.22:", desc: "Rebasing to alpine 3.15." }
-  - { date: "01.06.20:", desc: "Rebasing to alpine 3.12." }
-  - { date: "19.12.19:", desc: "Rebasing to alpine 3.11." }
-  - { date: "28.06.19:", desc: "Rebasing to alpine 3.10." }
-  - { date: "23.03.19:", desc: "Switching to new Base images, shift to arm32v7 tag." }
-  - { date: "22.03.19:", desc: "Updating runtime deps due to change in OpenJRE." }
-  - { date: "08.03.19:", desc: "Updating build environment to pass proper build flags and use gradle wrapper." }
-  - { date: "22.02.19:", desc: "Rebasing to alpine 3.9." }
-  - { date: "18.11.16:", desc: "Initial Release." }
+  - {date: "07.07.23:", desc: "Deprecate armhf. As announced [here](https://www.linuxserver.io/blog/a-farewell-to-arm-hf)"}
+  - {date: "13.02.23:", desc: "Rebase to Alpine 3.17, migrate to s6v3."}
+  - {date: "15.01.22:", desc: "Rebasing to alpine 3.15."}
+  - {date: "01.06.20:", desc: "Rebasing to alpine 3.12."}
+  - {date: "19.12.19:", desc: "Rebasing to alpine 3.11."}
+  - {date: "28.06.19:", desc: "Rebasing to alpine 3.10."}
+  - {date: "23.03.19:", desc: "Switching to new Base images, shift to arm32v7 tag."}
+  - {date: "22.03.19:", desc: "Updating runtime deps due to change in OpenJRE."}
+  - {date: "08.03.19:", desc: "Updating build environment to pass proper build flags and use gradle wrapper."}
+  - {date: "22.02.19:", desc: "Rebasing to alpine 3.9."}
+  - {date: "18.11.16:", desc: "Initial Release."}
