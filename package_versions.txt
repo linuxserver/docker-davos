@@ -120,9 +120,9 @@ nspr                           4.35-r2                 apk
 nss                            3.94-r0                 apk           
 ognl                           3.0.8                   java-archive  
 oniguruma                      6.9.8-r1                apk           
-openjdk8-jre                   8.392.08-r0             apk           
-openjdk8-jre-base              8.392.08-r0             apk           
-openjdk8-jre-lib               8.392.08-r0             apk           
+openjdk8-jre                   8.392.08-r1             apk           
+openjdk8-jre-base              8.392.08-r1             apk           
+openjdk8-jre-lib               8.392.08-r1             apk           
 p11-kit                        0.24.1-r2               apk           
 p11-kit-trust                  0.24.1-r2               apk           
 pcsc-lite-libs                 1.9.9-r3                apk           
