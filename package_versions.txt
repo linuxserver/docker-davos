@@ -61,7 +61,7 @@ jcl-over-slf4j                 1.7.21                  java-archive
 jfr                            1.8.0_392               java-archive  
 jmespath-java                  1.11.167                java-archive  
 joda-time                      2.3                     java-archive  
-jq                             1.6-r3                  apk           
+jq                             1.6-r4                  apk           
 jsch                           0.1.50                  java-archive  
 jsse                           1.8.0_392               java-archive  
 keyutils-libs                  1.6.3-r3                apk           
