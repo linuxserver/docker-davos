@@ -3,7 +3,7 @@ US_export_policy                                       java-archive
 alpine-baselayout              3.4.3-r1                apk           
 alpine-baselayout-data         3.4.3-r1                apk           
 alpine-keys                    2.4-r1                  apk           
-alpine-release                 3.18.5-r0               apk           
+alpine-release                 3.18.6-r0               apk           
 alsa-lib                       1.2.9-r1                apk           
 antlr                          2.7.7                   java-archive  
 apk-tools                      2.14.0-r2               apk           
@@ -25,7 +25,7 @@ commons-io                     2.4                     java-archive
 commons-lang3                  3.4                     java-archive  
 commons-logging                1.2                     java-archive  
 commons-net                    3.3                     java-archive  
-coreutils                      9.3-r1                  apk           
+coreutils                      9.3-r2                  apk           
 curl                           8.5.0-r0                apk           
 davos                                                  java-archive  
 dnsns                                                  java-archive  
@@ -74,7 +74,7 @@ libbsd                         0.11.7-r1               apk
 libbz2                         1.0.8-r5                apk           
 libc-utils                     0.7.2-r5                apk           
 libcom_err                     1.47.0-r2               apk           
-libcrypto3                     3.1.4-r4                apk           
+libcrypto3                     3.1.4-r5                apk           
 libcurl                        8.5.0-r0                apk           
 libexpat                       2.5.0-r1                apk           
 libffi                         3.4.4-r2                apk           
@@ -88,7 +88,7 @@ libmd                          1.0.4-r2                apk
 libncursesw                    6.4_p20230506-r0        apk           
 libpng                         1.6.39-r3               apk           
 libproc2                       4.0.4-r0                apk           
-libssl3                        3.1.4-r4                apk           
+libssl3                        3.1.4-r5                apk           
 libstdc++                      12.2.1_git20220924-r10  apk           
 libtasn1                       4.19.0-r1               apk           
 libunistring                   1.1-r1                  apk           
