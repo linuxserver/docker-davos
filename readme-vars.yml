@@ -15,7 +15,7 @@ available_architectures:
 param_container_name: "{{ project_name }}"
 param_usage_include_vols: true
 param_volumes:
-  - {vol_path: "/config", vol_host_path: "/path/to/data", desc: "davos's config location. This is where it stores its database file and logs."}
+  - {vol_path: "/config", vol_host_path: "/path/to/{{ project_name }}/data", desc: "davos's config location. This is where it stores its database file and logs."}
   - {vol_path: "/download", vol_host_path: "/path/to/downloads/folder", desc: "davos's file download location"}
 param_usage_include_ports: true
 param_ports:
@@ -26,6 +26,7 @@ app_setup_block: |
   The application does not require any set up other than starting the docker container. Further documentation can be found on the [davos GitHub repository page](https://github.com/linuxserver/davos).
 # changelog
 changelogs:
+  - {date: "20.03.24:", desc: "Rebase to Alpine 3.19."}
   - {date: "12.07.23:", desc: "Rebase to Alpine 3.18."}
   - {date: "07.07.23:", desc: "Deprecate armhf. As announced [here](https://www.linuxserver.io/blog/a-farewell-to-arm-hf)"}
   - {date: "13.02.23:", desc: "Rebase to Alpine 3.17, migrate to s6v3."}
