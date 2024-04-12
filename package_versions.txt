@@ -6,7 +6,7 @@ alpine-keys                    2.4-r1                 apk
 alpine-release                 3.19.1-r0              apk                           
 alsa-lib                       1.2.10-r0              apk                           
 antlr                          2.7.7                  java-archive                  
-apk-tools                      2.14.0-r5              apk                           
+apk-tools                      2.14.3-r1              apk                           
 aspectjweaver                  1.8.9                  java-archive                  
 aws-java-sdk-core              1.11.167               java-archive                  
 aws-java-sdk-sns               1.11.167               java-archive                  
