@@ -13,8 +13,8 @@ aws-java-sdk-sns               1.11.167               java-archive
 aws-java-sdk-sqs               1.11.167               java-archive                  
 bash                           5.2.21-r0              apk                           
 brotli-libs                    1.1.0-r1               apk                           
-busybox                        1.36.1-r18             apk                           
-busybox-binsh                  1.36.1-r18             apk                           
+busybox                        1.36.1-r19             apk                           
+busybox-binsh                  1.36.1-r19             apk                           
 c-ares                         1.27.0-r0              apk                           
 ca-certificates                20240226-r0            apk                           
 ca-certificates-bundle         20240226-r0            apk                           
@@ -164,7 +164,7 @@ spring-tx                      4.3.4.RELEASE          java-archive
 spring-web                     4.3.4.RELEASE          java-archive                  
 spring-webmvc                  4.3.4.RELEASE          java-archive                  
 sqlite-libs                    3.44.2-r0              apk                           
-ssl_client                     1.36.1-r18             apk                           
+ssl_client                     1.36.1-r19             apk                           
 sunec                          1.8.0_402              java-archive                  
 sunjce_provider                1.8.0_402              java-archive                  
 sunpkcs11                      1.8.0_402              java-archive                  
