@@ -42,7 +42,8 @@ RUN \
   apk add --no-cache \
     nss \
     openjdk8-jre \
-    sqlite-libs
+    sqlite-libs && \
+  printf "Linuxserver.io version: ${VERSION}\nBuild-date: ${BUILD_DATE}" > /build_version
 
 # copy files from build stage and local files
 COPY --from=buildstage /davos.jar /app/davos/davos.jar
