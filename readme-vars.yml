@@ -20,6 +20,9 @@ param_volumes:
 param_usage_include_ports: true
 param_ports:
   - {external_port: "8080", internal_port: "8080", port_desc: "This is the default port that davos runs under"}
+
+readonly_supported: true
+
 # application setup block
 app_setup_block_enabled: true
 app_setup_block: |
