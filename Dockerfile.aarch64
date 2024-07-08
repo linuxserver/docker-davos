@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM openjdk:8-alpine as buildstage
+FROM openjdk:8-alpine AS buildstage
 ARG DAVOS_RELEASE
 
 RUN \
