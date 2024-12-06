@@ -20,13 +20,54 @@ param_volumes:
 param_usage_include_ports: true
 param_ports:
   - {external_port: "8080", internal_port: "8080", port_desc: "This is the default port that davos runs under"}
-
 readonly_supported: true
-
 # application setup block
 app_setup_block_enabled: true
 app_setup_block: |
   The application does not require any set up other than starting the docker container. Further documentation can be found on the [davos GitHub repository page](https://github.com/linuxserver/davos).
+# init diagram
+init_diagram: |
+  "davos:latest": {
+    docker-mods
+    base {
+      fix-attr +\nlegacy cont-init
+    }
+    docker-mods -> base
+    legacy-services
+    custom services
+    init-services -> legacy-services
+    init-services -> custom services
+    custom services -> legacy-services
+    legacy-services -> ci-service-check
+    init-migrations -> init-adduser
+    init-os-end -> init-config
+    init-config -> init-config-end
+    init-davos-config -> init-config-end
+    init-os-end -> init-crontab-config
+    init-mods-end -> init-custom-files
+    init-config -> init-davos-config
+    base -> init-envfile
+    base -> init-migrations
+    base -> init-mods
+    init-config-end -> init-mods
+    init-mods -> init-mods-end
+    init-mods-package-install -> init-mods-end
+    init-mods -> init-mods-package-install
+    base -> init-os-end
+    init-adduser -> init-os-end
+    init-envfile -> init-os-end
+    init-migrations -> init-os-end
+    init-custom-files -> init-services
+    init-mods-end -> init-services
+    init-services -> svc-cron
+    svc-cron -> legacy-services
+    init-services -> svc-davos
+    svc-davos -> legacy-services
+  }
+  Base Images: {
+    "baseimage-alpine:3.20"
+  }
+  "davos:latest" <- Base Images
 # changelog
 changelogs:
   - {date: "24.06.24:", desc: "Rebase to Alpine 3.20."}
