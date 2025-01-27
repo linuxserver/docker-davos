@@ -4,10 +4,12 @@
 mkdir -p /download
 mkdir -p "/run/tomcat.8080"
 
-# permissions
-lsiown -R abc:abc \
-    /config \
-    /run/tomcat.8080
+if [[ -z ${LSIO_NON_ROOT_USER} ]]; then
+    # permissions
+    lsiown -R abc:abc \
+        /config \
+        /run/tomcat.8080
 
-lsiown abc:abc \
-    /download
+    lsiown abc:abc \
+        /download
+fi
