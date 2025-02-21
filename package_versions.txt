@@ -4,10 +4,10 @@ acl-libs                       2.3.2-r1             apk
 alpine-baselayout              3.6.8-r1             apk                           
 alpine-baselayout-data         3.6.8-r1             apk                           
 alpine-keys                    2.5-r0               apk                           
-alpine-release                 3.21.2-r0            apk                           
+alpine-release                 3.21.3-r0            apk                           
 alsa-lib                       1.2.12-r0            apk                           
 antlr                          2.7.7                java-archive                  
-apk-tools                      2.14.6-r2            apk                           
+apk-tools                      2.14.6-r3            apk                           
 aspectjweaver                  1.8.9                java-archive                  
 aws-java-sdk-core              1.11.167             java-archive                  
 aws-java-sdk-sns               1.11.167             java-archive                  
@@ -32,7 +32,7 @@ coreutils                      9.5-r2               apk
 coreutils-env                  9.5-r2               apk                           
 coreutils-fmt                  9.5-r2               apk                           
 coreutils-sha512sum            9.5-r2               apk                           
-curl                           8.12.0-r0            apk                           
+curl                           8.12.1-r0            apk                           
 davos                          UNKNOWN              java-archive                  
 dnsns                          UNKNOWN              java-archive                  
 dom4j                          1.6.1                java-archive                  
@@ -79,8 +79,8 @@ libattr                        2.5.2-r2             apk
 libbsd                         0.12.2-r0            apk                           
 libbz2                         1.0.8-r6             apk                           
 libcom_err                     1.47.1-r1            apk                           
-libcrypto3                     3.3.2-r5             apk                           
-libcurl                        8.12.0-r0            apk                           
+libcrypto3                     3.3.3-r0             apk                           
+libcurl                        8.12.1-r0            apk                           
 libexpat                       2.6.4-r0             apk                           
 libffi                         3.4.6-r0             apk                           
 libfontenc                     1.1.8-r0             apk                           
@@ -94,7 +94,7 @@ libncursesw                    6.5_p20241006-r3     apk
 libpng                         1.6.44-r0            apk                           
 libproc2                       4.0.4-r2             apk                           
 libpsl                         0.21.5-r3            apk                           
-libssl3                        3.3.2-r5             apk                           
+libssl3                        3.3.3-r0             apk                           
 libstdc++                      14.2.0-r4            apk                           
 libtasn1                       4.20.0-r0            apk                           
 libunistring                   1.2-r0               apk                           
@@ -116,8 +116,8 @@ log4j-core                     2.16.0               java-archive
 log4j-slf4j-impl               2.16.0               java-archive                  
 management-agent               UNKNOWN              java-archive                  
 mkfontscale                    1.2.3-r1             apk                           
-musl                           1.2.5-r8             apk                           
-musl-utils                     1.2.5-r8             apk                           
+musl                           1.2.5-r9             apk                           
+musl-utils                     1.2.5-r9             apk                           
 nashorn                        1.8.0_442-b06        java-archive                  
 ncurses-terminfo-base          6.5_p20241006-r3     apk                           
 netcat-openbsd                 1.226.1.1-r0         apk                           
@@ -176,7 +176,7 @@ tomcat-embed-el                8.5.6                java-archive
 tomcat-embed-websocket         8.5.6                java-archive                  
 tomcat-jdbc                    8.5.6                java-archive                  
 tomcat-juli                    8.5.6                java-archive                  
-tzdata                         2024b-r1             apk                           
+tzdata                         2025a-r0             apk                           
 unbescape                      1.1.0.RELEASE        java-archive                  
 utmps-libs                     0.1.2.3-r2           apk                           
 validation-api                 1.1.0.Final          java-archive                  
