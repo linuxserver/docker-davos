@@ -81,7 +81,7 @@ libbz2                         1.0.8-r6             apk
 libcom_err                     1.47.1-r1            apk                           
 libcrypto3                     3.3.3-r0             apk                           
 libcurl                        8.12.1-r0            apk                           
-libexpat                       2.6.4-r0             apk                           
+libexpat                       2.7.0-r0             apk                           
 libffi                         3.4.7-r0             apk                           
 libfontenc                     1.1.8-r0             apk                           
 libgcc                         14.2.0-r4            apk                           
@@ -91,7 +91,7 @@ libjpeg-turbo                  3.0.4-r0             apk
 liblksctp                      1.0.19-r5            apk                           
 libmd                          1.1.0-r0             apk                           
 libncursesw                    6.5_p20241006-r3     apk                           
-libpng                         1.6.44-r0            apk                           
+libpng                         1.6.47-r0            apk                           
 libproc2                       4.0.4-r2             apk                           
 libpsl                         0.21.5-r3            apk                           
 libssl3                        3.3.3-r0             apk                           
@@ -123,7 +123,7 @@ ncurses-terminfo-base          6.5_p20241006-r3     apk
 netcat-openbsd                 1.226.1.1-r0         apk                           
 nghttp2-libs                   1.64.0-r0            apk                           
 nspr                           4.36-r0              apk                           
-nss                            3.107-r0             apk                           
+nss                            3.109-r0             apk                           
 ognl                           3.0.8                java-archive                  
 oniguruma                      6.9.9-r0             apk                           
 openjdk8-jre                   8.442.06-r0          apk                           
