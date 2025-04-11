@@ -16,7 +16,7 @@ bash                           5.2.37-r0            apk
 brotli-libs                    1.1.0-r2             apk                           
 busybox                        1.37.0-r12           apk                           
 busybox-binsh                  1.37.0-r12           apk                           
-c-ares                         1.34.3-r0            apk                           
+c-ares                         1.34.5-r0            apk                           
 ca-certificates                20241121-r1          apk                           
 ca-certificates-bundle         20241121-r1          apk                           
 catatonit                      0.2.0-r0             apk                           
@@ -41,7 +41,7 @@ findutils                      4.10.0-r0            apk
 font-dejavu                    2.37-r5              apk                           
 fontconfig                     2.15.0-r1            apk                           
 freetype                       2.13.3-r0            apk                           
-giflib                         5.2.2-r0             apk                           
+giflib                         5.2.2-r1             apk                           
 groovy                         2.4.7                java-archive                  
 h2                             1.4.193              java-archive                  
 hibernate-commons-annotations  5.0.1.Final          java-archive                  
