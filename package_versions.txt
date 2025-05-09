@@ -163,7 +163,7 @@ spring-orm                     4.3.4.RELEASE        java-archive
 spring-tx                      4.3.4.RELEASE        java-archive                  
 spring-web                     4.3.4.RELEASE        java-archive                  
 spring-webmvc                  4.3.4.RELEASE        java-archive                  
-sqlite-libs                    3.48.0-r1            apk                           
+sqlite-libs                    3.48.0-r2            apk                           
 ssl_client                     1.37.0-r12           apk                           
 sunec                          1.8.0_442            java-archive                  
 sunjce_provider                1.8.0_442            java-archive                  
