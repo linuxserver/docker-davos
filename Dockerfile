@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM openjdk:8-alpine AS buildstage
+FROM eclipse-temurin:8-jdk AS buildstage
 ARG DAVOS_RELEASE
 
 RUN \
   echo "**** Install build requirements ****" && \
-  apk add \
+  apt-get update && apt-get install -y \
     bash \
     curl \
     jq && \
