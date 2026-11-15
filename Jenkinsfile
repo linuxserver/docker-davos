@@ -54,6 +54,57 @@ pipeline {
         '''
       }
     }
+    /* ############################
+       Bash Function For GHCR Retry
+       ############################ */
+    // Create a reusable script for a ghcr retry bash function
+    stage("Create Bash Function"){
+      steps{
+        sh '''#! /bin/bash
+              # create our retry function
+              retry_ghcr() {
+                local max_attempts=7
+                local base_delay=10
+                local max_delay=90
+                local attempt=1
+                local errfile exit_code delay pause
+                errfile=$(mktemp)
+                while true; do
+                  # run inside an if so a caller's set -e cannot abort before we get to retry
+                  if "$@" 2> >(tee "${errfile}" >&2); then
+                    exit_code=0
+                  else
+                    exit_code=$?
+                  fi
+                  # make sure tee has finished writing before we read the file
+                  wait $! 2>/dev/null || true
+                  if [[ "${exit_code}" == "0" ]]; then
+                    rm -f "${errfile}"
+                    return 0
+                  elif ! grep -q -i -E "retry-after:|toomanyrequests|too many requests" "${errfile}"; then
+                    rm -f "${errfile}"
+                    return "${exit_code}"
+                  elif (( attempt >= max_attempts )); then
+                    rm -f "${errfile}"
+                    echo "retry: $* failed after ${attempt} attempts (exit ${exit_code})" >&2
+                    return "${exit_code}"
+                  else
+                    # exponential delay: base * 2^(attempt-1), capped at max_delay
+                    delay=$(( base_delay * 2 ** (attempt - 1) ))
+                    (( delay > max_delay )) && delay="${max_delay}"
+                    # jitter between half and full delay so parallel builds spread out
+                    pause=$(( delay / 2 + RANDOM % (delay / 2 + 1) ))
+                    echo "retry: attempt ${attempt}/${max_attempts} failed (exit ${exit_code}); waiting ${pause}s..." >&2
+                    sleep "${pause}"
+                    ((attempt++))
+                  fi
+                done
+              }
+
+              declare -f retry_ghcr > ${WORKSPACE}/retry_ghcr.sh
+           '''
+      }
+    }
     // Setup all the basic environment variables needed for the build
     stage("Set ENV Variables base"){
       steps{
@@ -78,8 +129,12 @@ pipeline {
            '''
         script{
           env.EXIT_STATUS = ''
+          env.CI_TEST_ATTEMPTED = ''
+          env.PUSH_ATTEMPTED = ''
           env.LS_RELEASE = sh(
-            script: '''docker run --rm quay.io/skopeo/stable:v1 inspect docker://ghcr.io/${LS_USER}/${CONTAINER_NAME}:latest 2>/dev/null | jq -r '.Labels.build_version' | awk '{print $3}' | grep '\\-ls' || : ''',
+            script: '''#! /bin/bash
+                       source ${WORKSPACE}/retry_ghcr.sh
+                       retry_ghcr docker run --rm quay.io/skopeo/stable:v1 inspect docker://ghcr.io/${LS_USER}/${CONTAINER_NAME}:latest | jq -r '.Labels.build_version' | awk '{print $3}' | grep '\\-ls' || : ''',
             returnStdout: true).trim()
           env.LS_RELEASE_NOTES = sh(
             script: '''cat readme-vars.yml | awk -F \\" '/date: "[0-9][0-9].[0-9][0-9].[0-9][0-9]:/ {print $4;exit;}' | sed -E ':a;N;$!ba;s/\\r{0,1}\\n/\\\\n/g' ''',
@@ -96,12 +151,16 @@ pipeline {
           env.CODE_URL = 'https://github.com/' + env.LS_USER + '/' + env.LS_REPO + '/commit/' + env.GIT_COMMIT
           env.DOCKERHUB_LINK = 'https://hub.docker.com/r/' + env.DOCKERHUB_IMAGE + '/tags/'
           env.PULL_REQUEST = env.CHANGE_ID
-          env.TEMPLATED_FILES = 'Jenkinsfile README.md LICENSE .editorconfig ./.github/CONTRIBUTING.md ./.github/FUNDING.yml ./.github/ISSUE_TEMPLATE/config.yml ./.github/ISSUE_TEMPLATE/issue.bug.yml ./.github/ISSUE_TEMPLATE/issue.feature.yml ./.github/PULL_REQUEST_TEMPLATE.md ./.github/workflows/external_trigger_scheduler.yml ./.github/workflows/greetings.yml ./.github/workflows/package_trigger_scheduler.yml ./.github/workflows/call_issue_pr_tracker.yml ./.github/workflows/call_issues_cron.yml ./.github/workflows/permissions.yml ./.github/workflows/external_trigger.yml'
+          env.TEMPLATED_FILES = 'Jenkinsfile README.md LICENSE .editorconfig AGENTS.md ./.github/CONTRIBUTING.md ./.github/FUNDING.yml ./.github/ISSUE_TEMPLATE/config.yml ./.github/ISSUE_TEMPLATE/issue.bug.yml ./.github/ISSUE_TEMPLATE/issue.feature.yml ./.github/PULL_REQUEST_TEMPLATE.md ./.github/workflows/external_trigger_scheduler.yml ./.github/workflows/greetings.yml ./.github/workflows/package_trigger_scheduler.yml ./.github/workflows/call_issue_pr_tracker.yml ./.github/workflows/call_issues_cron.yml ./.github/workflows/permissions.yml ./.github/workflows/external_trigger.yml'
           if ( env.SYFT_IMAGE_TAG == null ) {
             env.SYFT_IMAGE_TAG = 'latest'
           }
+          if ( env.GITLAB_TIMEOUT == null ) {
+            env.GITLAB_TIMEOUT = '600'
+          }
         }
         echo "Using syft image tag ${SYFT_IMAGE_TAG}"
+        echo "Using gitlab registry timeout ${GITLAB_TIMEOUT}"
         sh '''#! /bin/bash
               echo "The default github branch detected as ${GH_DEFAULT_BRANCH}" '''
         script{
@@ -289,11 +348,13 @@ pipeline {
           }
           sh '''curl -sL https://raw.githubusercontent.com/linuxserver/docker-jenkins-builder/master/checkrun.sh | /bin/bash'''
           sh '''#! /bin/bash
+                source ${WORKSPACE}/retry_ghcr.sh
+                retry_ghcr docker pull ghcr.io/linuxserver/baseimage-alpine:3.23
                 docker run --rm \
                   -v ${WORKSPACE}:/mnt \
                   -e AWS_ACCESS_KEY_ID=\"${S3_KEY}\" \
                   -e AWS_SECRET_ACCESS_KEY=\"${S3_SECRET}\" \
-                  ghcr.io/linuxserver/baseimage-alpine:3 s6-envdir -fn -- /var/run/s6/container_environment /bin/bash -c "\
+                  ghcr.io/linuxserver/baseimage-alpine:3.23 s6-envdir -fn -- /var/run/s6/container_environment /bin/bash -c "\
                     apk add --no-cache python3 && \
                     python3 -m venv /lsiopy && \
                     pip install --no-cache-dir -U pip && \
@@ -315,7 +376,8 @@ pipeline {
         sh '''#! /bin/bash
               set -e
               TEMPDIR=$(mktemp -d)
-              docker pull ghcr.io/linuxserver/jenkins-builder:latest
+              source ${WORKSPACE}/retry_ghcr.sh
+              retry_ghcr docker pull ghcr.io/linuxserver/jenkins-builder:latest
               # Cloned repo paths for templating:
               # ${TEMPDIR}/docker-${CONTAINER_NAME}: Cloned branch master of ${LS_USER}/${LS_REPO} for running the jenkins builder on
               # ${TEMPDIR}/repo/${LS_REPO}: Cloned branch master of ${LS_USER}/${LS_REPO} for commiting various templated file changes and pushing back to Github
@@ -374,6 +436,7 @@ pipeline {
                 sed -i 's|^changelogs:|# init diagram\\ninit_diagram:\\n\\n# changelog\\nchangelogs:|' readme-vars.yml
               fi
               mkdir -p ${TEMPDIR}/d2
+              retry_ghcr docker pull ghcr.io/linuxserver/d2-builder:latest
               docker run --rm -v ${TEMPDIR}/d2:/output -e PUID=$(id -u) -e PGID=$(id -g) -e RAW="true" ghcr.io/linuxserver/d2-builder:latest ${CONTAINER_NAME}:latest
               ls -al ${TEMPDIR}/d2
               yq -ei ".init_diagram |= load_str(\\"${TEMPDIR}/d2/${CONTAINER_NAME}-latest.d2\\")" readme-vars.yml
@@ -590,22 +653,25 @@ pipeline {
       steps {
         echo "Running on node: ${NODE_NAME}"
         sh "sed -r -i 's|(^FROM .*)|\\1\\n\\nENV LSIO_FIRST_PARTY=true|g' Dockerfile"
-        sh "docker buildx build \
-          --label \"org.opencontainers.image.created=${GITHUB_DATE}\" \
-          --label \"org.opencontainers.image.authors=linuxserver.io\" \
-          --label \"org.opencontainers.image.url=https://github.com/linuxserver/docker-davos/packages\" \
-          --label \"org.opencontainers.image.documentation=https://docs.linuxserver.io/images/docker-davos\" \
-          --label \"org.opencontainers.image.source=https://github.com/linuxserver/docker-davos\" \
-          --label \"org.opencontainers.image.version=${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}\" \
-          --label \"org.opencontainers.image.revision=${COMMIT_SHA}\" \
-          --label \"org.opencontainers.image.vendor=linuxserver.io\" \
-          --label \"org.opencontainers.image.licenses=GPL-3.0-only\" \
-          --label \"org.opencontainers.image.ref.name=${COMMIT_SHA}\" \
-          --label \"org.opencontainers.image.title=Davos\" \
-          --label \"org.opencontainers.image.description=[Davos](https://github.com/linuxserver/davos) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.  \" \
-          --no-cache --pull -t ${IMAGE}:${META_TAG} --platform=linux/amd64 \
-          --provenance=true --sbom=true --builder=container --load \
-          --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+        sh '''#! /bin/bash
+              source ${WORKSPACE}/retry_ghcr.sh
+              retry_ghcr docker buildx build \
+                --label "org.opencontainers.image.created=${GITHUB_DATE}" \
+                --label "org.opencontainers.image.authors=linuxserver.io" \
+                --label "org.opencontainers.image.url=https://github.com/linuxserver/docker-davos/packages" \
+                --label "org.opencontainers.image.documentation=https://docs.linuxserver.io/images/docker-davos" \
+                --label "org.opencontainers.image.source=https://github.com/linuxserver/docker-davos" \
+                --label "org.opencontainers.image.version=${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}" \
+                --label "org.opencontainers.image.revision=${COMMIT_SHA}" \
+                --label "org.opencontainers.image.vendor=linuxserver.io" \
+                --label "org.opencontainers.image.licenses=GPL-3.0-only" \
+                --label "org.opencontainers.image.ref.name=${COMMIT_SHA}" \
+                --label "org.opencontainers.image.title=Davos" \
+                --label "org.opencontainers.image.description=[Davos](https://github.com/linuxserver/davos) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.  " \
+                --no-cache --pull -t ${IMAGE}:${META_TAG} --platform=linux/amd64 \
+                --provenance=true --sbom=true --builder=container --load \
+                --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION="${VERSION_TAG}" --build-arg BUILD_DATE=${GITHUB_DATE} .
+           '''
         sh '''#! /bin/bash
               set -e
               IFS=',' read -ra CACHE <<< "$BUILDCACHE"
@@ -624,6 +690,17 @@ pipeline {
           retry_backoff(5,5) {
               sh '''#! /bin/bash
                     set -e
+                    # run a registry.gitlab.com command under what is left of the gitlab time budget
+                    gitlab_timeout() {
+                      local remaining=$(( GITLAB_DEADLINE - SECONDS ))
+                      if (( remaining <= 0 )); then
+                        echo "gitlab timeout budget of ${GITLAB_TIMEOUT}s used up, skipping: $*" >&2
+                        return 124
+                      fi
+                      timeout "${remaining}" "$@"
+                    }
+                    GITLAB_DEADLINE=$(( SECONDS + GITLAB_TIMEOUT ))
+
                     echo $DOCKERHUB_TOKEN | docker login -u linuxserverci --password-stdin
                     echo $GITHUB_TOKEN | docker login ghcr.io -u LinuxServer-CI --password-stdin
                     echo $GITLAB_TOKEN | docker login registry.gitlab.com -u LinuxServer.io --password-stdin
@@ -633,11 +710,16 @@ pipeline {
                       declare -A pids
                       IFS=',' read -ra CACHE <<< "$BUILDCACHE"
                       for i in "${CACHE[@]}"; do
-                        docker push ${i}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} &
+                        if [[ "${i}" == *"registry.gitlab.com"* ]]; then
+                          TIMEOUT_CMD="gitlab_timeout"
+                        else
+                          TIMEOUT_CMD=""
+                        fi
+                        ${TIMEOUT_CMD} docker push ${i}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} &
                         pids[$!]="$i"
                       done
                       for p in "${!pids[@]}"; do
-                        wait "$p" || { [[ "${pids[$p]}" != *"quay.io"* ]] && exit 1; }
+                        wait "$p" || { if [[ "${pids[$p]}" != *"quay.io"* && "${pids[$p]}" != *"registry.gitlab.com"* ]]; then exit 1; fi; }
                       done
                     fi
                 '''
@@ -659,22 +741,25 @@ pipeline {
           steps {
             echo "Running on node: ${NODE_NAME}"
             sh "sed -r -i 's|(^FROM .*)|\\1\\n\\nENV LSIO_FIRST_PARTY=true|g' Dockerfile"
-            sh "docker buildx build \
-              --label \"org.opencontainers.image.created=${GITHUB_DATE}\" \
-              --label \"org.opencontainers.image.authors=linuxserver.io\" \
-              --label \"org.opencontainers.image.url=https://github.com/linuxserver/docker-davos/packages\" \
-              --label \"org.opencontainers.image.documentation=https://docs.linuxserver.io/images/docker-davos\" \
-              --label \"org.opencontainers.image.source=https://github.com/linuxserver/docker-davos\" \
-              --label \"org.opencontainers.image.version=${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}\" \
-              --label \"org.opencontainers.image.revision=${COMMIT_SHA}\" \
-              --label \"org.opencontainers.image.vendor=linuxserver.io\" \
-              --label \"org.opencontainers.image.licenses=GPL-3.0-only\" \
-              --label \"org.opencontainers.image.ref.name=${COMMIT_SHA}\" \
-              --label \"org.opencontainers.image.title=Davos\" \
-              --label \"org.opencontainers.image.description=[Davos](https://github.com/linuxserver/davos) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.  \" \
-              --no-cache --pull -t ${IMAGE}:amd64-${META_TAG} --platform=linux/amd64 \
-              --provenance=true --sbom=true --builder=container --load \
-              --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+            sh '''#! /bin/bash
+                  source ${WORKSPACE}/retry_ghcr.sh
+                  retry_ghcr docker buildx build \
+                    --label "org.opencontainers.image.created=${GITHUB_DATE}" \
+                    --label "org.opencontainers.image.authors=linuxserver.io" \
+                    --label "org.opencontainers.image.url=https://github.com/linuxserver/docker-davos/packages" \
+                    --label "org.opencontainers.image.documentation=https://docs.linuxserver.io/images/docker-davos" \
+                    --label "org.opencontainers.image.source=https://github.com/linuxserver/docker-davos" \
+                    --label "org.opencontainers.image.version=${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}" \
+                    --label "org.opencontainers.image.revision=${COMMIT_SHA}" \
+                    --label "org.opencontainers.image.vendor=linuxserver.io" \
+                    --label "org.opencontainers.image.licenses=GPL-3.0-only" \
+                    --label "org.opencontainers.image.ref.name=${COMMIT_SHA}" \
+                    --label "org.opencontainers.image.title=Davos" \
+                    --label "org.opencontainers.image.description=[Davos](https://github.com/linuxserver/davos) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.  " \
+                    --no-cache --pull -t ${IMAGE}:amd64-${META_TAG} --platform=linux/amd64 \
+                    --provenance=true --sbom=true --builder=container --load \
+                    --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION="${VERSION_TAG}" --build-arg BUILD_DATE=${GITHUB_DATE} .
+               '''
             sh '''#! /bin/bash
                   set -e
                   IFS=',' read -ra CACHE <<< "$BUILDCACHE"
@@ -693,6 +778,17 @@ pipeline {
               retry_backoff(5,5) {
                   sh '''#! /bin/bash
                         set -e
+                        # run a registry.gitlab.com command under what is left of the gitlab time budget
+                        gitlab_timeout() {
+                          local remaining=$(( GITLAB_DEADLINE - SECONDS ))
+                          if (( remaining <= 0 )); then
+                            echo "gitlab timeout budget of ${GITLAB_TIMEOUT}s used up, skipping: $*" >&2
+                            return 124
+                          fi
+                          timeout "${remaining}" "$@"
+                        }
+                        GITLAB_DEADLINE=$(( SECONDS + GITLAB_TIMEOUT ))
+
                         echo $DOCKERHUB_TOKEN | docker login -u linuxserverci --password-stdin
                         echo $GITHUB_TOKEN | docker login ghcr.io -u LinuxServer-CI --password-stdin
                         echo $GITLAB_TOKEN | docker login registry.gitlab.com -u LinuxServer.io --password-stdin
@@ -702,11 +798,16 @@ pipeline {
                           declare -A pids
                           IFS=',' read -ra CACHE <<< "$BUILDCACHE"
                           for i in "${CACHE[@]}"; do
-                            docker push ${i}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} &
+                            if [[ "${i}" == *"registry.gitlab.com"* ]]; then
+                              TIMEOUT_CMD="gitlab_timeout"
+                            else
+                              TIMEOUT_CMD=""
+                            fi
+                            ${TIMEOUT_CMD} docker push ${i}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} &
                             pids[$!]="$i"
                           done
                           for p in "${!pids[@]}"; do
-                            wait "$p" || { [[ "${pids[$p]}" != *"quay.io"* ]] && exit 1; }
+                            wait "$p" || { if [[ "${pids[$p]}" != *"quay.io"* && "${pids[$p]}" != *"registry.gitlab.com"* ]]; then exit 1; fi; }
                           done
                         fi
                     '''
@@ -721,22 +822,64 @@ pipeline {
           steps {
             echo "Running on node: ${NODE_NAME}"
             sh "sed -r -i 's|(^FROM .*)|\\1\\n\\nENV LSIO_FIRST_PARTY=true|g' Dockerfile.aarch64"
-            sh "docker buildx build \
-              --label \"org.opencontainers.image.created=${GITHUB_DATE}\" \
-              --label \"org.opencontainers.image.authors=linuxserver.io\" \
-              --label \"org.opencontainers.image.url=https://github.com/linuxserver/docker-davos/packages\" \
-              --label \"org.opencontainers.image.documentation=https://docs.linuxserver.io/images/docker-davos\" \
-              --label \"org.opencontainers.image.source=https://github.com/linuxserver/docker-davos\" \
-              --label \"org.opencontainers.image.version=${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}\" \
-              --label \"org.opencontainers.image.revision=${COMMIT_SHA}\" \
-              --label \"org.opencontainers.image.vendor=linuxserver.io\" \
-              --label \"org.opencontainers.image.licenses=GPL-3.0-only\" \
-              --label \"org.opencontainers.image.ref.name=${COMMIT_SHA}\" \
-              --label \"org.opencontainers.image.title=Davos\" \
-              --label \"org.opencontainers.image.description=[Davos](https://github.com/linuxserver/davos) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.  \" \
-              --no-cache --pull -f Dockerfile.aarch64 -t ${IMAGE}:arm64v8-${META_TAG} --platform=linux/arm64 \
-              --provenance=true --sbom=true --builder=container --load \
-              --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION=\"${VERSION_TAG}\" --build-arg BUILD_DATE=${GITHUB_DATE} ."
+            sh '''#! /bin/bash
+                  # create our retry function
+                  retry_ghcr() {
+                    local max_attempts=7
+                    local base_delay=10
+                    local max_delay=90
+                    local attempt=1
+                    local errfile exit_code delay pause
+                    errfile=$(mktemp)
+                    while true; do
+                      # run inside an if so a caller's set -e cannot abort before we get to retry
+                      if "$@" 2> >(tee "${errfile}" >&2); then
+                        exit_code=0
+                      else
+                        exit_code=$?
+                      fi
+                      # make sure tee has finished writing before we read the file
+                      wait $! 2>/dev/null || true
+                      if [[ "${exit_code}" == "0" ]]; then
+                        rm -f "${errfile}"
+                        return 0
+                      elif ! grep -q -i -E "retry-after:|toomanyrequests|too many requests" "${errfile}"; then
+                        rm -f "${errfile}"
+                        return "${exit_code}"
+                      elif (( attempt >= max_attempts )); then
+                        rm -f "${errfile}"
+                        echo "retry: $* failed after ${attempt} attempts (exit ${exit_code})" >&2
+                        return "${exit_code}"
+                      else
+                        # exponential delay: base * 2^(attempt-1), capped at max_delay
+                        delay=$(( base_delay * 2 ** (attempt - 1) ))
+                        (( delay > max_delay )) && delay="${max_delay}"
+                        # jitter between half and full delay so parallel builds spread out
+                        pause=$(( delay / 2 + RANDOM % (delay / 2 + 1) ))
+                        echo "retry: attempt ${attempt}/${max_attempts} failed (exit ${exit_code}); waiting ${pause}s..." >&2
+                        sleep "${pause}"
+                        ((attempt++))
+                      fi
+                    done
+                  }
+
+                  retry_ghcr docker buildx build \
+                    --label "org.opencontainers.image.created=${GITHUB_DATE}" \
+                    --label "org.opencontainers.image.authors=linuxserver.io" \
+                    --label "org.opencontainers.image.url=https://github.com/linuxserver/docker-davos/packages" \
+                    --label "org.opencontainers.image.documentation=https://docs.linuxserver.io/images/docker-davos" \
+                    --label "org.opencontainers.image.source=https://github.com/linuxserver/docker-davos" \
+                    --label "org.opencontainers.image.version=${EXT_RELEASE_CLEAN}-ls${LS_TAG_NUMBER}" \
+                    --label "org.opencontainers.image.revision=${COMMIT_SHA}" \
+                    --label "org.opencontainers.image.vendor=linuxserver.io" \
+                    --label "org.opencontainers.image.licenses=GPL-3.0-only" \
+                    --label "org.opencontainers.image.ref.name=${COMMIT_SHA}" \
+                    --label "org.opencontainers.image.title=Davos" \
+                    --label "org.opencontainers.image.description=[Davos](https://github.com/linuxserver/davos) is an FTP automation tool that periodically scans given host locations for new files. It can be configured for various purposes, including listening for specific files to appear in the host location, ready for it to download and then move, if required. It also supports completion notifications as well as downstream API calls, to further the workflow.  " \
+                    --no-cache --pull -f Dockerfile.aarch64 -t ${IMAGE}:arm64v8-${META_TAG} --platform=linux/arm64 \
+                    --provenance=true --sbom=true --builder=container --load \
+                    --build-arg ${BUILD_VERSION_ARG}=${EXT_RELEASE} --build-arg VERSION="${VERSION_TAG}" --build-arg BUILD_DATE=${GITHUB_DATE} .
+               '''
             sh '''#! /bin/bash
                   set -e
                   IFS=',' read -ra CACHE <<< "$BUILDCACHE"
@@ -755,6 +898,17 @@ pipeline {
               retry_backoff(5,5) {
                   sh '''#! /bin/bash
                         set -e
+                        # run a registry.gitlab.com command under what is left of the gitlab time budget
+                        gitlab_timeout() {
+                          local remaining=$(( GITLAB_DEADLINE - SECONDS ))
+                          if (( remaining <= 0 )); then
+                            echo "gitlab timeout budget of ${GITLAB_TIMEOUT}s used up, skipping: $*" >&2
+                            return 124
+                          fi
+                          timeout "${remaining}" "$@"
+                        }
+                        GITLAB_DEADLINE=$(( SECONDS + GITLAB_TIMEOUT ))
+
                         echo $DOCKERHUB_TOKEN | docker login -u linuxserverci --password-stdin
                         echo $GITHUB_TOKEN | docker login ghcr.io -u LinuxServer-CI --password-stdin
                         echo $GITLAB_TOKEN | docker login registry.gitlab.com -u LinuxServer.io --password-stdin
@@ -763,11 +917,16 @@ pipeline {
                           declare -A pids
                           IFS=',' read -ra CACHE <<< "$BUILDCACHE"
                           for i in "${CACHE[@]}"; do
-                            docker push ${i}:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} &
+                            if [[ "${i}" == *"registry.gitlab.com"* ]]; then
+                              TIMEOUT_CMD="gitlab_timeout"
+                            else
+                              TIMEOUT_CMD=""
+                            fi
+                            ${TIMEOUT_CMD} docker push ${i}:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} &
                             pids[$!]="$i"
                           done
                           for p in "${!pids[@]}"; do
-                            wait "$p" || { [[ "${pids[$p]}" != *"quay.io"* ]] && exit 1; }
+                            wait "$p" || { if [[ "${pids[$p]}" != *"quay.io"* && "${pids[$p]}" != *"registry.gitlab.com"* ]]; then exit 1; fi; }
                           done
                         fi
                     '''
@@ -802,6 +961,8 @@ pipeline {
                 LOCAL_CONTAINER=${IMAGE}:${META_TAG}
               fi
               touch ${TEMPDIR}/package_versions.txt
+              source ${WORKSPACE}/retry_ghcr.sh
+              retry_ghcr docker pull ghcr.io/anchore/syft:${SYFT_IMAGE_TAG}
               docker run --rm \
                 -v /var/run/docker.sock:/var/run/docker.sock:ro \
                 -v ${TEMPDIR}:/tmp \
@@ -881,6 +1042,7 @@ pipeline {
           script{
             env.CI_URL = 'https://ci-tests.linuxserver.io/' + env.IMAGE + '/' + env.META_TAG + '/index.html'
             env.CI_JSON_URL = 'https://ci-tests.linuxserver.io/' + env.IMAGE + '/' + env.META_TAG + '/report.json'
+            env.CI_TEST_ATTEMPTED = 'true'
           }
           sh '''#! /bin/bash
                 set -e
@@ -892,9 +1054,10 @@ pipeline {
                     CI_DOCKERENV="LSIO_FIRST_PARTY=true"
                   fi
                 fi
-                docker pull ghcr.io/linuxserver/ci:${CITEST_IMAGETAG}
+                source ${WORKSPACE}/retry_ghcr.sh
+                retry_ghcr docker pull ghcr.io/linuxserver/ci:${CITEST_IMAGETAG}
                 if [ "${MULTIARCH}" == "true" ]; then
-                  docker pull ghcr.io/linuxserver/lsiodev-buildcache:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} --platform=arm64
+                  retry_ghcr docker pull ghcr.io/linuxserver/lsiodev-buildcache:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} --platform=arm64
                   docker tag ghcr.io/linuxserver/lsiodev-buildcache:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} ${IMAGE}:arm64v8-${META_TAG}
                 fi
                 docker run --rm \
@@ -933,10 +1096,29 @@ pipeline {
         environment name: 'EXIT_STATUS', value: ''
       }
       steps {
+        script{
+          env.PUSH_ATTEMPTED = 'true'
+        }
         retry_backoff(5,5) {
           sh '''#! /bin/bash
                 set -e
+                # run a registry.gitlab.com command under what is left of the gitlab time budget
+                gitlab_timeout() {
+                  local remaining=$(( GITLAB_DEADLINE - SECONDS ))
+                  if (( remaining <= 0 )); then
+                    echo "gitlab timeout budget of ${GITLAB_TIMEOUT}s used up, skipping: $*" >&2
+                    return 124
+                  fi
+                  timeout "${remaining}" "$@"
+                }
+                GITLAB_DEADLINE=$(( SECONDS + GITLAB_TIMEOUT ))
+
                 for PUSHIMAGE in "${IMAGE}" "${GITLABIMAGE}" "${GITHUBIMAGE}" "${QUAYIMAGE}"; do
+                  if [[ "${PUSHIMAGE}" == "${GITLABIMAGE}" ]]; then
+                    TIMEOUT_CMD="gitlab_timeout"
+                  else
+                    TIMEOUT_CMD=""
+                  fi
                   [[ ${PUSHIMAGE%%/*} =~ \\. ]] && PUSHIMAGEPLUS="${PUSHIMAGE}" || PUSHIMAGEPLUS="docker.io/${PUSHIMAGE}"
                   IFS=',' read -ra CACHE <<< "$BUILDCACHE"
                   for i in "${CACHE[@]}"; do
@@ -944,11 +1126,11 @@ pipeline {
                           CACHEIMAGE=${i}
                       fi
                   done
-                  docker buildx imagetools create --prefer-index=false -t ${PUSHIMAGE}:${META_TAG} -t ${PUSHIMAGE}:latest -t ${PUSHIMAGE}:${EXT_RELEASE_TAG} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
-                    { if [[ "${PUSHIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
+                  ${TIMEOUT_CMD} docker buildx imagetools create --prefer-index=false -t ${PUSHIMAGE}:${META_TAG} -t ${PUSHIMAGE}:latest -t ${PUSHIMAGE}:${EXT_RELEASE_TAG} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
+                    { if [[ "${PUSHIMAGE}" != "${QUAYIMAGE}" && "${PUSHIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
                   if [ -n "${SEMVER}" ]; then
-                    docker buildx imagetools create --prefer-index=false -t ${PUSHIMAGE}:${SEMVER} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
-                      { if [[ "${PUSHIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
+                    ${TIMEOUT_CMD} docker buildx imagetools create --prefer-index=false -t ${PUSHIMAGE}:${SEMVER} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
+                      { if [[ "${PUSHIMAGE}" != "${QUAYIMAGE}" && "${PUSHIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
                   fi
                 done
               '''
@@ -962,38 +1144,66 @@ pipeline {
         environment name: 'EXIT_STATUS', value: ''
       }
       steps {
+        script{
+          env.PUSH_ATTEMPTED = 'true'
+        }
         retry_backoff(5,5) {
           sh '''#! /bin/bash
                 set -e
+                # run a registry.gitlab.com command under what is left of the gitlab time budget
+                gitlab_timeout() {
+                  local remaining=$(( GITLAB_DEADLINE - SECONDS ))
+                  if (( remaining <= 0 )); then
+                    echo "gitlab timeout budget of ${GITLAB_TIMEOUT}s used up, skipping: $*" >&2
+                    return 124
+                  fi
+                  timeout "${remaining}" "$@"
+                }
+                GITLAB_DEADLINE=$(( SECONDS + GITLAB_TIMEOUT ))
+
                 for MANIFESTIMAGE in "${IMAGE}" "${GITLABIMAGE}" "${GITHUBIMAGE}" "${QUAYIMAGE}"; do
-                  [[ ${MANIFESTIMAGE%%/*} =~ \\. ]] && MANIFESTIMAGEPLUS="${MANIFESTIMAGE}" || MANIFESTIMAGEPLUS="docker.io/${MANIFESTIMAGE}"
+                  if [[ "${MANIFESTIMAGE}" == "${GITLABIMAGE}" ]]; then
+                    TIMEOUT_CMD="gitlab_timeout"
+                  else
+                    TIMEOUT_CMD=""
+                  fi
+                  if [[ "${MANIFESTIMAGE%%/*}" =~ \\. ]]; then
+                    MANIFESTIMAGEPLUS="${MANIFESTIMAGE}"
+                  else
+                    MANIFESTIMAGEPLUS="docker.io/${MANIFESTIMAGE}"
+                  fi
                   IFS=',' read -ra CACHE <<< "$BUILDCACHE"
                   for i in "${CACHE[@]}"; do
                       if [[ "${MANIFESTIMAGEPLUS}" == "$(cut -d "/" -f1 <<< ${i})"* ]]; then
                           CACHEIMAGE=${i}
                       fi
                   done
-                  docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:amd64-${META_TAG} -t ${MANIFESTIMAGE}:amd64-latest -t ${MANIFESTIMAGE}:amd64-${EXT_RELEASE_TAG} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
-                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
-                  docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:arm64v8-${META_TAG} -t ${MANIFESTIMAGE}:arm64v8-latest -t ${MANIFESTIMAGE}:arm64v8-${EXT_RELEASE_TAG} ${CACHEIMAGE}:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} || \
-                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
+                  ${TIMEOUT_CMD} docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:amd64-${META_TAG} -t ${MANIFESTIMAGE}:amd64-latest -t ${MANIFESTIMAGE}:amd64-${EXT_RELEASE_TAG} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
+                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
+                  ${TIMEOUT_CMD} docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:arm64v8-${META_TAG} -t ${MANIFESTIMAGE}:arm64v8-latest -t ${MANIFESTIMAGE}:arm64v8-${EXT_RELEASE_TAG} ${CACHEIMAGE}:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} || \
+                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
                   if [ -n "${SEMVER}" ]; then
-                    docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:amd64-${SEMVER} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
-                      { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
-                    docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:arm64v8-${SEMVER} ${CACHEIMAGE}:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} || \
-                      { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
+                    ${TIMEOUT_CMD} docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:amd64-${SEMVER} ${CACHEIMAGE}:amd64-${COMMIT_SHA}-${BUILD_NUMBER} || \
+                      { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
+                    ${TIMEOUT_CMD} docker buildx imagetools create --prefer-index=false -t ${MANIFESTIMAGE}:arm64v8-${SEMVER} ${CACHEIMAGE}:arm64v8-${COMMIT_SHA}-${BUILD_NUMBER} || \
+                      { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
                   fi
                 done
                 for MANIFESTIMAGE in "${IMAGE}" "${GITLABIMAGE}" "${GITHUBIMAGE}" "${QUAYIMAGE}"; do
-                  docker buildx imagetools create -t ${MANIFESTIMAGE}:latest ${MANIFESTIMAGE}:amd64-latest ${MANIFESTIMAGE}:arm64v8-latest || \
-                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
-                  docker buildx imagetools create -t ${MANIFESTIMAGE}:${META_TAG} ${MANIFESTIMAGE}:amd64-${META_TAG} ${MANIFESTIMAGE}:arm64v8-${META_TAG} || \
-                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
-                  docker buildx imagetools create -t ${MANIFESTIMAGE}:${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:amd64-${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:arm64v8-${EXT_RELEASE_TAG} || \
-                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
+                  if [[ "${MANIFESTIMAGE}" == "${GITLABIMAGE}" ]]; then
+                    TIMEOUT_CMD="gitlab_timeout"
+                  else
+                    TIMEOUT_CMD=""
+                  fi
+                  ${TIMEOUT_CMD} docker buildx imagetools create -t ${MANIFESTIMAGE}:latest ${MANIFESTIMAGE}:amd64-latest ${MANIFESTIMAGE}:arm64v8-latest || \
+                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
+                  ${TIMEOUT_CMD} docker buildx imagetools create -t ${MANIFESTIMAGE}:${META_TAG} ${MANIFESTIMAGE}:amd64-${META_TAG} ${MANIFESTIMAGE}:arm64v8-${META_TAG} || \
+                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
+                  ${TIMEOUT_CMD} docker buildx imagetools create -t ${MANIFESTIMAGE}:${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:amd64-${EXT_RELEASE_TAG} ${MANIFESTIMAGE}:arm64v8-${EXT_RELEASE_TAG} || \
+                    { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
                   if [ -n "${SEMVER}" ]; then
-                    docker buildx imagetools create -t ${MANIFESTIMAGE}:${SEMVER} ${MANIFESTIMAGE}:amd64-${SEMVER} ${MANIFESTIMAGE}:arm64v8-${SEMVER} || \
-                      { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" ]]; then exit 1; fi; }
+                    ${TIMEOUT_CMD} docker buildx imagetools create -t ${MANIFESTIMAGE}:${SEMVER} ${MANIFESTIMAGE}:amd64-${SEMVER} ${MANIFESTIMAGE}:arm64v8-${SEMVER} || \
+                      { if [[ "${MANIFESTIMAGE}" != "${QUAYIMAGE}" && "${MANIFESTIMAGE}" != "${GITLABIMAGE}" ]]; then exit 1; fi; }
                   fi
                 done
               '''
@@ -1083,98 +1293,13 @@ EOF
           ) '''
       }
     }
-    // If this is a Pull request send the CI link as a comment on it
-    stage('Pull Request Comment') {
-      when {
-        not {environment name: 'CHANGE_ID', value: ''}
-        environment name: 'EXIT_STATUS', value: ''
-      }
-      steps {
-        sh '''#! /bin/bash
-            # Function to retrieve JSON data from URL
-            get_json() {
-              local url="$1"
-              local response=$(curl -s "$url")
-              if [ $? -ne 0 ]; then
-                echo "Failed to retrieve JSON data from $url"
-                return 1
-              fi
-              local json=$(echo "$response" | jq .)
-              if [ $? -ne 0 ]; then
-                echo "Failed to parse JSON data from $url"
-                return 1
-              fi
-              echo "$json"
-            }
-
-            build_table() {
-              local data="$1"
-
-              # Get the keys in the JSON data
-              local keys=$(echo "$data" | jq -r 'to_entries | map(.key) | .[]')
-
-              # Check if keys are empty
-              if [ -z "$keys" ]; then
-                echo "JSON report data does not contain any keys or the report does not exist."
-                return 1
-              fi
-
-              # Build table header
-              local header="| Tag | Passed |\\n| --- | --- |\\n"
-
-              # Loop through the JSON data to build the table rows
-              local rows=""
-              for build in $keys; do
-                local status=$(echo "$data" | jq -r ".[\\"$build\\"].test_success")
-                if [ "$status" = "true" ]; then
-                  status="✅"
-                else
-                  status="❌"
-                fi
-                local row="| "$build" | "$status" |\\n"
-                rows="${rows}${row}"
-              done
-
-              local table="${header}${rows}"
-              local escaped_table=$(echo "$table" | sed 's/\"/\\\\"/g')
-              echo "$escaped_table"
-            }
-
-            if [[ "${CI}" = "true" ]]; then
-              # Retrieve JSON data from URL
-              data=$(get_json "$CI_JSON_URL")
-              # Create table from JSON data
-              table=$(build_table "$data")
-              echo -e "$table"
-
-              curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github.v3+json" \
-                "https://api.github.com/repos/$LS_USER/$LS_REPO/issues/$PULL_REQUEST/comments" \
-                -d "{\\"body\\": \\"I am a bot, here are the test results for this PR: \\n${CI_URL}\\n${SHELLCHECK_URL}\\n${table}\\"}"
-            else
-              curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github.v3+json" \
-                "https://api.github.com/repos/$LS_USER/$LS_REPO/issues/$PULL_REQUEST/comments" \
-                -d "{\\"body\\": \\"I am a bot, here is the pushed image/manifest for this PR: \\n\\n\\`${GITHUBIMAGE}:${META_TAG}\\`\\"}"
-            fi
-            '''
-
-      }
-    }
   }
   /* ######################
-     Send status to Discord
+     Comment on PR and Send status to Discord
      ###################### */
   post {
     always {
-      sh '''#!/bin/bash
-            rm -rf /config/.ssh/id_sign
-            rm -rf /config/.ssh/id_sign.pub
-            git config --global --unset gpg.format
-            git config --global --unset user.signingkey
-            git config --global --unset commit.gpgsign
-        '''
-      script{
+      script {
         env.JOB_DATE = sh(
             script: '''date '+%Y-%m-%dT%H:%M:%S%:z' ''',
             returnStdout: true).trim()
@@ -1217,6 +1342,94 @@ EOF
                  "username": "Jenkins"}' ${BUILDS_DISCORD} '''
         }
       }
+      script {
+        if (env.GITHUBIMAGE =~ /lspipepr/){
+          if (env.CI_TEST_ATTEMPTED == "true" || env.PUSH_ATTEMPTED == "true"){
+            sh '''#! /bin/bash
+                  # Function to retrieve JSON data from URL
+                  get_json() {
+                    local url="$1"
+                    local response=$(curl -s "$url")
+                    if [ $? -ne 0 ]; then
+                      echo "Failed to retrieve JSON data from $url"
+                      return 1
+                    fi
+                    local json=$(echo "$response" | jq .)
+                    if [ $? -ne 0 ]; then
+                      echo "Failed to parse JSON data from $url"
+                      return 1
+                    fi
+                    echo "$json"
+                  }
+
+                  build_table() {
+                    local data="$1"
+
+                    # Get the keys in the JSON data
+                    local keys=$(echo "$data" | jq -r 'to_entries | map(.key) | .[]')
+
+                    # Check if keys are empty
+                    if [ -z "$keys" ]; then
+                      echo "JSON report data does not contain any keys or the report does not exist."
+                      return 1
+                    fi
+
+                    # Build table header
+                    local header="| Tag | Passed |\\n| --- | --- |\\n"
+
+                    # Loop through the JSON data to build the table rows
+                    local rows=""
+                    for build in $keys; do
+                      local status=$(echo "$data" | jq -r ".[\\"$build\\"].test_success")
+                      if [ "$status" = "true" ]; then
+                        status="✅"
+                      else
+                        status="❌"
+                      fi
+                      local row="| "$build" | "$status" |\\n"
+                      rows="${rows}${row}"
+                    done
+
+                    local table="${header}${rows}"
+                    local escaped_table=$(echo "$table" | sed 's/\"/\\\\"/g')
+                    echo "$escaped_table"
+                  }
+
+                  if [[ "${CI}" = "true" ]]; then
+                    # Retrieve JSON data from URL
+                    data=$(get_json "$CI_JSON_URL")
+                    # Create table from JSON data
+                    table=$(build_table "$data")
+                    echo -e "$table"
+
+                    curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+                      -H "Accept: application/vnd.github.v3+json" \
+                      "https://api.github.com/repos/$LS_USER/$LS_REPO/issues/$PULL_REQUEST/comments" \
+                      -d "{\\"body\\": \\"I am a bot, here are the test results for this PR for commit ${COMMIT_SHA:0:7} : \\n${CI_URL}\\n${SHELLCHECK_URL}\\n${table}\\"}"
+                  else
+                    curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+                      -H "Accept: application/vnd.github.v3+json" \
+                      "https://api.github.com/repos/$LS_USER/$LS_REPO/issues/$PULL_REQUEST/comments" \
+                      -d "{\\"body\\": \\"I am a bot, here is the pushed image/manifest for this PR for commit ${COMMIT_SHA:0:7} : \\n\\n\\`${GITHUBIMAGE}:${META_TAG}\\`\\"}"
+                  fi
+                  '''
+          } else {
+            sh '''#! /bin/bash
+                  curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    "https://api.github.com/repos/$LS_USER/$LS_REPO/issues/$PULL_REQUEST/comments" \
+                    -d "{\\"body\\": \\"I am a bot, the build for PR commit ${COMMIT_SHA:0:7} failed and as a result no CI test was attempted and no images were pushed.\\"}"
+            '''
+          }
+        }
+      }
+      sh '''#!/bin/bash
+            rm -rf /config/.ssh/id_sign
+            rm -rf /config/.ssh/id_sign.pub
+            git config --global --unset gpg.format
+            git config --global --unset user.signingkey
+            git config --global --unset commit.gpgsign
+        '''
     }
     cleanup {
       sh '''#! /bin/bash
